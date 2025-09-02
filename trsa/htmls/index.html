@@ -20,11 +20,30 @@
             --font-main: 'Inter', 'Noto Sans KR', sans-serif;
             --font-code: 'Fira Code', 'D2Coding', monospace;
         }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
 
         body {
             font-family: var(--font-main);
             margin: 0;
             background-color: var(--bg-color);
+            background-image: 
+                linear-gradient(rgba(26, 27, 38, 0.95), rgba(26, 27, 38, 0.95)),
+                linear-gradient(var(--border-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+            background-size: 100% 100%, 50px 50px, 50px 50px;
             color: var(--primary-text);
             line-height: 1.8;
         }
@@ -34,19 +53,26 @@
             padding: 1.5rem 2rem;
             text-align: center;
             border-bottom: 1px solid var(--border-color);
+            animation: fadeIn 0.8s ease-out;
         }
         
         header h1 { 
             margin: 0; 
             font-family: var(--font-code);
-            font-size: 2rem; 
+            font-size: 2.2rem; 
             color: var(--accent-cyan);
-            text-shadow: 0 0 5px var(--accent-cyan);
+            text-shadow: 0 0 8px var(--accent-cyan);
+        }
+        header p {
+            margin: 0.5rem 0 0;
+            color: var(--secondary-text);
+            font-family: var(--font-code);
+            font-size: 1rem;
         }
 
         main {
             display: flex;
-            max-width: 1500px;
+            max-width: 1600px;
             margin: 2rem auto;
             gap: 2rem;
             padding: 0 1.5rem;
@@ -57,16 +83,18 @@
             border-radius: 10px;
             border: 1px solid var(--border-color);
             padding: 1rem 2rem 2rem 2rem;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            animation: slideInUp 0.7s ease-out;
         }
 
-        .content-pane { flex: 3; }
+        .content-pane { flex: 3; animation-delay: 0.1s; }
         .activity-pane {
             flex: 2;
             position: sticky;
             top: 2rem;
             height: calc(100vh - 4rem);
             overflow-y: auto;
+            animation-delay: 0.2s;
         }
         /* Custom Scrollbar */
         .activity-pane::-webkit-scrollbar { width: 8px; }
@@ -114,6 +142,10 @@
             padding: 1.5rem;
             margin-top: 1.5rem;
             border-radius: 8px;
+            transition: box-shadow 0.3s;
+        }
+        .scenario:hover {
+             box-shadow: 0 0 15px rgba(255, 193, 7, 0.2);
         }
         .scenario-title { font-weight: 700; color: #ffc107; font-size: 1.1rem; }
 
@@ -178,6 +210,20 @@
             font-family: var(--font-code);
         }
         
+        .mission-control {
+            background: rgba(0,0,0,0.2);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+        }
+
+        .mission-control h3 {
+            margin-top: 0;
+            text-align: center;
+            font-family: var(--font-code);
+            color: var(--primary-text);
+        }
+
         .worksheet-section {
             margin-bottom: 2rem;
         }
@@ -216,9 +262,10 @@
         #submitBtn, #copyWorksheetBtn {
             display: block;
             width: 100%;
-            padding: 0.9rem;
+            padding: 0.9rem 1rem;
             font-family: var(--font-code);
             font-size: 1rem;
+            line-height: 1.5;
             font-weight: bold;
             color: var(--bg-color);
             border: none;
@@ -231,7 +278,7 @@
         }
 
         #submitBtn {
-            margin: 1rem 0 0 0;
+            margin-bottom: 0.75rem;
             background-color: var(--accent-red);
         }
         #submitBtn:hover {
@@ -241,7 +288,6 @@
         }
 
         #copyWorksheetBtn {
-            margin-top: 1rem;
             background-color: var(--accent-cyan);
         }
         #copyWorksheetBtn:hover {
@@ -261,6 +307,7 @@
 
     <header>
         <h1>DB MISSION: UNLOCK THE TRANSACTION</h1>
+        <p>// A single transaction failure can crash the entire system. Your mission is to understand why.</p>
     </header>
 
     <main>
@@ -270,23 +317,21 @@
                 <p>이번 미션은 AI(Gemini)를 단순 검색기가 아닌, 함께 문제를 해결하는 파트너로 활용하는 능력을 평가한다. 아래 가이드를 참고하여 Gemini의 잠재력을 최대한 끌어내고, 미션을 완수하라.</p>
                 
                 <h4><strong>Tier-Up Prompting ∇</strong></h4>
-                <p><strong>1. 개념 심층 탐사:</strong></p>
+                <p>다음은 AI 파트너의 능력을 최대한 활용하기 위한 질문 예시이다. 그대로 사용하기보다, 자신만의 상황에 맞게 변형하여 질문하는 것을 권장한다.</p>
                 <div class="prompt-wrapper">
                     <div class="prompt-example">> 데이터베이스 트랜잭션의 '격리성(Isolation)'에 대해 설명해 줘. 고등학생이 이해할 수 있게 비유를 들어주고, 격리 수준(Isolation Level)에는 어떤 종류가 있는지 간단히 알려줘.</div>
                     <button class="copy-btn">Copy</button>
                 </div>
-                <p><strong>2. 창의적 시나리오 분석:</strong></p>
                 <div class="prompt-wrapper">
                     <div class="prompt-example">> MMORPG 게임에서 100명의 유저가 동시에 월드 보스를 공격해 아이템 드랍 권한을 얻는 상황을 트랜잭션 관점에서 분석해 줘. 이때 '갱신 분실' 외에 어떤 동시성 문제가 발생할 수 있을까?</div>
                     <button class="copy-btn">Copy</button>
                 </div>
-                <p><strong>3. 해결책 장단점 비교:</strong></p>
                 <div class="prompt-wrapper">
                     <div class="prompt-example">> '갱신 분실' 문제를 해결하는 '낙관적 락'과 '비관적 락'의 차이점, 그리고 각각 어떤 상황에 더 유리한지 알려줘.</div>
                     <button class="copy-btn">Copy</button>
                 </div>
                 
-                <p style="color: var(--accent-red); font-weight:700;"><strong>[⚠️ WARNING]</strong> AI의 답변을 그대로 복사하는 것은 '지식 해킹'이 아닌 '실패한 침투'로 간주된다. AI가 제공한 '정보(Information)'를 자신만의 '지식(Knowledge)'으로 재구성하여 보고하라.</p>
+                <p style="color: var(--accent-red); font-weight:700; border: 1px solid var(--accent-red); padding: 0.5rem; border-radius: 4px; text-align: center;"><strong>[⚠️ WARNING]</strong> AI의 답변을 그대로 복사하는 것은 '지식 해킹'이 아닌 '실패한 침투'로 간주된다. AI가 제공한 '정보(Information)'를 자신만의 '지식(Knowledge)'으로 재구성하여 보고하라.</p>
             </div>
 
             <h2>MISSION 1: DECODE 'ACID'</h2>
@@ -325,23 +370,27 @@
                     <li><code style="color:#a9b1d6;">[Log Recorded]</code> T1이 책 재고를 10에서 9로 변경 시도.</li>
                     <li><code style="color:#f7768e;">[SYSTEM CRASH!]</code> 재고 변경은 메모리(RAM)에만 적용된 상태. 디스크에는 아직 미반영. 주문내역 INSERT는 시작도 못함.</li>
                 </ol>
-                <p>시스템 재부팅 후, DBMS는 로그를 확인한다. T1은 COMMIT 기록 없이 종료되었다. 이 데이터를 어떻게 처리해야 할까? (힌트: UNDO)</p>
+                <p>시스템 재부팅 후, DBMS는 로그를 확인한다. T1은 COMMIT 기록 없이 종료되었다. 데이터의 '원자성'을 지키기 위해 시스템은 이 미완료 트랜잭션을 어떻게 처리해야 하는가? (힌트: UNDO)</p>
             </div>
 
             <h3>Situation B: 동시 접속으로 인한 데이터 충돌</h3>
             <div class="scenario">
                 <p class="scenario-title">[SCENARIO] 마지막 콘서트 티켓 쟁탈전</p>
-                <p>마지막 남은 VIP석 1개를 유저 A와 B가 0.01초 차이로 동시에 예매를 시도했다. 격리성이 없다면 어떤 일이 벌어질까?</p>
+                <p>마지막 남은 VIP석 1개를 유저 A와 B가 0.01초 차이로 동시에 예매를 시도했다. '격리성'이 보장되지 않는다면 어떤 끔찍한 일이 벌어질까?</p>
                 <p>이 문제를 해결하기 위해 DBMS는 <strong>'잠금(Locking)'</strong> 메커니즘을 사용한다. 데이터를 변경하려는 트랜잭션은 그 데이터에 <code>Exclusive Lock(배타적 잠금)</code>을 걸어 다른 트랜잭션의 접근을 막는다. 오직 읽기만 할 때는 <code>Shared Lock(공유 잠금)</code>을 사용하여 다른 트랜잭션의 읽기는 허용한다.</p>
             </div>
         </div>
 
         <div class="activity-pane">
             <h2>[MISSION BRIEFING]</h2>
-            <a href="https://drive.google.com/drive/folders/122Z_ZuN_X6fe0-Lg451sNBXaIhCf8b5V?usp=sharing" target="_blank" id="submitBtn">
-                🚀 최종 보고서 제출하기
-            </a>
-            <button id="copyWorksheetBtn">📋 활동지 전체로 프롬프트 생성</button>
+            <div class="mission-control">
+                <h3>[MISSION CONTROL]</h3>
+                <a href="https://drive.google.com/drive/folders/122Z_ZuN_X6fe0-Lg451sNBXaIhCf8b5V?usp=sharing" target="_blank" id="submitBtn">
+                    🚀 최종 보고서 제출하기
+                </a>
+                <button id="copyWorksheetBtn">📋 활동지 전체로 프롬프트 생성</button>
+            </div>
+            
             <div id="worksheetContent">
                 <div class="worksheet-section">
                     <h3>🚀 MISSION OBJECTIVE (임무 목표)</h3>
