@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DB MISSION: 트랜잭션의 비밀을 파헤쳐라</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Fira+Code:wght@400;600&display=swap');
+
+        :root {
+            --bg-color: #1a1b26;
+            --surface-color: #24283b;
+            --primary-text: #c0caf5;
+            --secondary-text: #a9b1d6;
+            --accent-cyan: #7dcfff;
+            --accent-magenta: #bb9af7;
+            --accent-green: #9ece6a;
+            --accent-red: #f7768e;
+            --border-color: #414868;
+            --font-main: 'Inter', 'Noto Sans KR', sans-serif;
+            --font-code: 'Fira Code', 'D2Coding', monospace;
+        }
+
+        body {
+            font-family: var(--font-main);
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            line-height: 1.8;
+        }
+
+        header {
+            background: linear-gradient(90deg, #16161e, #1a1b26);
+            padding: 1.5rem 2rem;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        header h1 { 
+            margin: 0; 
+            font-family: var(--font-code);
+            font-size: 2rem; 
+            color: var(--accent-cyan);
+            text-shadow: 0 0 5px var(--accent-cyan);
+        }
+
+        main {
+            display: flex;
+            max-width: 1500px;
+            margin: 2rem auto;
+            gap: 2rem;
+            padding: 0 1.5rem;
+        }
+
+        .content-pane, .activity-pane {
+            background-color: var(--surface-color);
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            padding: 1rem 2rem 2rem 2rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .content-pane { flex: 3; }
+        .activity-pane {
+            flex: 2;
+            position: sticky;
+            top: 2rem;
+            height: calc(100vh - 4rem);
+            overflow-y: auto;
+        }
+        /* Custom Scrollbar */
+        .activity-pane::-webkit-scrollbar { width: 8px; }
+        .activity-pane::-webkit-scrollbar-track { background: var(--surface-color); }
+        .activity-pane::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 4px; }
+
+        h2 { 
+            font-family: var(--font-code);
+            color: var(--accent-green);
+            border-bottom: 2px solid var(--accent-green);
+            padding-bottom: 0.5rem;
+            margin-top: 2.5rem;
+            font-size: 1.6rem;
+        }
+        h3 { color: var(--accent-magenta); margin-top: 2rem; font-size: 1.3rem; }
+        h4 { margin-bottom: 0.5rem; color: var(--accent-cyan); }
+
+        .concept-card {
+            background-color: rgba(0,0,0,0.1);
+            border: 1px solid var(--border-color);
+            border-left: 5px solid var(--accent-magenta);
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .concept-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 15px rgba(187, 154, 247, 0.2);
+        }
+        .concept-card strong { font-size: 1.2rem; color: var(--accent-magenta); display: block; margin-bottom: 0.5rem;}
+        .consequence {
+            background: rgba(247, 118, 142, 0.1);
+            border: 1px solid var(--accent-red);
+            padding: 0.8rem;
+            margin-top: 1rem;
+            border-radius: 4px;
+            font-size: 0.95rem;
+        }
+        .consequence span { font-weight: 700; color: var(--accent-red); }
+
+        .scenario {
+            background: rgba(255, 193, 7, 0.05);
+            border: 1px solid #ffc107;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            border-radius: 8px;
+        }
+        .scenario-title { font-weight: 700; color: #ffc107; font-size: 1.1rem; }
+
+        .ai-guide {
+            background-color: var(--surface-color);
+            border: 1px solid var(--accent-cyan);
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border-radius: 8px;
+        }
+        .ai-guide h3 { margin-top: 0; color: var(--accent-cyan); text-shadow: 0 0 3px var(--accent-cyan); }
+        
+        .prompt-wrapper {
+            position: relative;
+            margin: 1rem 0;
+        }
+        
+        .prompt-example {
+            background-color: var(--bg-color);
+            padding: 1rem;
+            border-radius: 4px;
+            font-family: var(--font-code);
+            font-size: 0.95rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px dashed var(--border-color);
+            padding-right: 60px; /* Make space for button */
+        }
+        
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: var(--border-color);
+            color: var(--primary-text);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-family: var(--font-code);
+            opacity: 0.7;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            opacity: 1;
+            background-color: var(--accent-magenta);
+        }
+
+        .copy-btn.copied {
+            background-color: var(--accent-green);
+            color: var(--bg-color);
+            opacity: 1;
+        }
+        
+        code {
+            color: var(--accent-green);
+            background-color: rgba(158, 206, 106, 0.1);
+            padding: 0.2em 0.5em;
+            border-radius: 4px;
+            font-family: var(--font-code);
+        }
+        
+        .worksheet-section {
+            margin-bottom: 2rem;
+        }
+        .worksheet-section h3 {
+            font-size: 1.4rem;
+        }
+        .worksheet-section p {
+            color: var(--secondary-text);
+        }
+        .worksheet-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+        .worksheet-table th, .worksheet-table td {
+            border: 1px solid var(--border-color);
+            padding: 0.8rem;
+            text-align: left;
+        }
+        .worksheet-table th {
+            background-color: rgba(0,0,0,0.2);
+            color: var(--accent-cyan);
+        }
+
+        .analysis-target {
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            margin-top: 1rem;
+            border-radius: 8px;
+        }
+        .analysis-target strong {
+            color: var(--accent-green);
+        }
+        
+        /* --- Button Style Unification --- */
+        #submitBtn, #copyWorksheetBtn {
+            display: block;
+            width: 100%;
+            padding: 0.9rem;
+            font-family: var(--font-code);
+            font-size: 1rem;
+            font-weight: bold;
+            color: var(--bg-color);
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #submitBtn {
+            margin: 1rem 0 0 0;
+            background-color: var(--accent-red);
+        }
+        #submitBtn:hover {
+            background-color: #fff;
+            color: var(--accent-red);
+            box-shadow: 0 4px 15px rgba(247, 118, 142, 0.4);
+        }
+
+        #copyWorksheetBtn {
+            margin-top: 1rem;
+            background-color: var(--accent-cyan);
+        }
+        #copyWorksheetBtn:hover {
+            background-color: #fff;
+            color: var(--accent-cyan);
+            box-shadow: 0 4px 15px rgba(125, 207, 255, 0.4);
+        }
+
+
+        @media (max-width: 1200px) {
+            main { flex-direction: column; }
+            .activity-pane { position: static; height: auto; margin-top: 0; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>DB MISSION: UNLOCK THE TRANSACTION</h1>
+    </header>
+
+    <main>
+        <div class="content-pane">
+            <div class="ai-guide">
+                <h3>[GUIDE] Gemini, 너는 내 학습 파트너</h3>
+                <p>이번 미션은 AI(Gemini)를 단순 검색기가 아닌, 함께 문제를 해결하는 파트너로 활용하는 능력을 평가한다. 아래 가이드를 참고하여 Gemini의 잠재력을 최대한 끌어내고, 미션을 완수하라.</p>
+                
+                <h4><strong>Tier-Up Prompting ∇</strong></h4>
+                <p><strong>1. 개념 심층 탐사:</strong></p>
+                <div class="prompt-wrapper">
+                    <div class="prompt-example">> 데이터베이스 트랜잭션의 '격리성(Isolation)'에 대해 설명해 줘. 고등학생이 이해할 수 있게 비유를 들어주고, 격리 수준(Isolation Level)에는 어떤 종류가 있는지 간단히 알려줘.</div>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <p><strong>2. 창의적 시나리오 분석:</strong></p>
+                <div class="prompt-wrapper">
+                    <div class="prompt-example">> MMORPG 게임에서 100명의 유저가 동시에 월드 보스를 공격해 아이템 드랍 권한을 얻는 상황을 트랜잭션 관점에서 분석해 줘. 이때 '갱신 분실' 외에 어떤 동시성 문제가 발생할 수 있을까?</div>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                <p><strong>3. 해결책 장단점 비교:</strong></p>
+                <div class="prompt-wrapper">
+                    <div class="prompt-example">> '갱신 분실' 문제를 해결하는 '낙관적 락'과 '비관적 락'의 차이점, 그리고 각각 어떤 상황에 더 유리한지 알려줘.</div>
+                    <button class="copy-btn">Copy</button>
+                </div>
+                
+                <p style="color: var(--accent-red); font-weight:700;"><strong>[⚠️ WARNING]</strong> AI의 답변을 그대로 복사하는 것은 '지식 해킹'이 아닌 '실패한 침투'로 간주된다. AI가 제공한 '정보(Information)'를 자신만의 '지식(Knowledge)'으로 재구성하여 보고하라.</p>
+            </div>
+
+            <h2>MISSION 1: DECODE 'ACID'</h2>
+            <p>데이터베이스의 심장, '트랜잭션'의 4대 원칙 'ACID'. 이 암호를 해독하고 데이터 세계의 질서가 어떻게 유지되는지 파악하라.</p>
+
+            <div class="concept-card">
+                <strong>A: Atomicity (원자성)</strong>
+                <p>'All or Nothing'. 작전은 전부 성공하거나, 전부 실패해야 한다. 중간은 없다. 하나의 작업이라도 실패하면 모든 것을 작전 시작 전으로 되돌린다.</p>
+                <div class="consequence"><span>[만약 없다면?]</span> 출금은 됐는데 입금은 증발하는 '유령 송금' 발생. 데이터의 신뢰도 붕괴.</div>
+            </div>
+            <div class="concept-card">
+                <strong>C: Consistency (일관성)</strong>
+                <p>룰은 반드시 지켜진다. 트랜잭션은 정해진 규칙(제약조건)을 위반할 수 없으며, 작전 전후로 데이터는 항상 유효한 상태를 유지해야 한다.</p>
+                <div class="consequence"><span>[만약 없다면?]</span> 재고가 마이너스가 되거나, 학생이 존재하지 않는 과목을 수강하는 등 데이터베이스의 규칙이 깨지는 대혼란 발생.</div>
+            </div>
+            <div class="concept-card">
+                <strong>I: Isolation (격리성)</strong>
+                <p>비밀 작전 보장. 여러 작전이 동시에 수행되더라도 서로의 작전 내용을 알 수 없다. 각 트랜잭션은 독립된 공간에서 실행되는 것처럼 보여야 한다.</p>
+                <div class="consequence"><span>[만약 없다면?]</span> 마지막 남은 KTX 티켓이 2명에게 동시에 팔리는 '중복 판매' 대참사 발생.</div>
+            </div>
+            <div class="concept-card">
+                <strong>D: Durability (지속성)</strong>
+                <p>성공 기록은 영원하다. 한번 성공(COMMIT)된 작전의 결과는 시스템이 다운되거나 정전이 발생해도 영구적으로 기록되어야 한다.</p>
+                <div class="consequence"><span>[만약 없다면?]</span> 결제 완료 후 앱을 껐다 켜니 구매 내역이 사라지는 허무한 상황 발생.</div>
+            </div>
+
+            <h2>MISSION 2: ANALYZE SYSTEM FAILURE</h2>
+            <p>시스템은 완벽하지 않다. 장애 발생 시 데이터베이스가 어떻게 스스로를 보호하고 복구하는지, 그 생존 매커니즘을 분석하라.</p>
+            
+            <h3>Situation A: 정전으로 인한 시스템 다운</h3>
+            <div class="scenario">
+                <p class="scenario-title">[SCENARIO] 쇼핑몰 주문 중 BLACK OUT</p>
+                <p>재고 10권의 책을 1권 주문하는 트랜잭션이 시작됐다. DBMS는 모든 변경사항을 <code>로그(Log)</code> 파일에 기록한다.</p>
+                <ol>
+                    <li><code style="color:#a9b1d6;">[Log Recorded]</code> 트랜잭션 T1 시작.</li>
+                    <li><code style="color:#a9b1d6;">[Log Recorded]</code> T1이 책 재고를 10에서 9로 변경 시도.</li>
+                    <li><code style="color:#f7768e;">[SYSTEM CRASH!]</code> 재고 변경은 메모리(RAM)에만 적용된 상태. 디스크에는 아직 미반영. 주문내역 INSERT는 시작도 못함.</li>
+                </ol>
+                <p>시스템 재부팅 후, DBMS는 로그를 확인한다. T1은 COMMIT 기록 없이 종료되었다. 이 데이터를 어떻게 처리해야 할까? (힌트: UNDO)</p>
+            </div>
+
+            <h3>Situation B: 동시 접속으로 인한 데이터 충돌</h3>
+            <div class="scenario">
+                <p class="scenario-title">[SCENARIO] 마지막 콘서트 티켓 쟁탈전</p>
+                <p>마지막 남은 VIP석 1개를 유저 A와 B가 0.01초 차이로 동시에 예매를 시도했다. 격리성이 없다면 어떤 일이 벌어질까?</p>
+                <p>이 문제를 해결하기 위해 DBMS는 <strong>'잠금(Locking)'</strong> 메커니즘을 사용한다. 데이터를 변경하려는 트랜잭션은 그 데이터에 <code>Exclusive Lock(배타적 잠금)</code>을 걸어 다른 트랜잭션의 접근을 막는다. 오직 읽기만 할 때는 <code>Shared Lock(공유 잠금)</code>을 사용하여 다른 트랜잭션의 읽기는 허용한다.</p>
+            </div>
+        </div>
+
+        <div class="activity-pane">
+            <h2>[MISSION BRIEFING]</h2>
+            <a href="https://drive.google.com/drive/folders/122Z_ZuN_X6fe0-Lg451sNBXaIhCf8b5V?usp=sharing" target="_blank" id="submitBtn">
+                🚀 최종 보고서 제출하기
+            </a>
+            <button id="copyWorksheetBtn">📋 활동지 전체로 프롬프트 생성</button>
+            <div id="worksheetContent">
+                <div class="worksheet-section">
+                    <h3>🚀 MISSION OBJECTIVE (임무 목표)</h3>
+                    <ul>
+                        <li>데이터베이스 트랜잭션의 핵심 프로토콜 'ACID'를 해독하고, 실제 시스템에 적용하여 분석한다.</li>
+                        <li>시스템 장애 및 동시성 충돌 시나리오를 분석하고, 회복 및 병행 제어 메커니즘을 논리적으로 설명한다.</li>
+                        <li>AI 'Gemini'를 효과적인 정보 분석 파트너로 활용하여, 탐사 결과를 심화하고 재구성하는 능력을 증명한다.</li>
+                    </ul>
+                </div>
+
+                <div class="worksheet-section">
+                    <h3>MISSION 1: DECODE 'ACID' & ANALYZE (50점)</h3>
+                    <h4>[1-1] ACID 프로토콜 기능 분석 (20점)</h4>
+                    <p>AI(Gemini)의 지원을 받아, ACID 각 프로토콜의 핵심 기능과, 해당 프로토콜이 실패했을 때 발생할 수 있는 치명적인 시스템 오류를 자신만의 언어로 재구성하여 보고하라.</p>
+                    <table class="worksheet-table">
+                        <thead>
+                            <tr>
+                                <th>PROTOCOL</th>
+                                <th>🎯 핵심 기능 (자신만의 비유 또는 요약)</th>
+                                <th>💣 실패 시 발생 가능한 재앙적 시나리오</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td>A: Atomicity</td><td></td><td></td></tr>
+                            <tr><td>C: Consistency</td><td></td><td></td></tr>
+                            <tr><td>I: Isolation</td><td></td><td></td></tr>
+                            <tr><td>D: Durability</td><td></td><td></td></tr>
+                        </tbody>
+                    </table>
+
+                    <h4 style="margin-top: 2rem;">[1-2] 실제 시스템 ACID 적용 분석 (30점)</h4>
+                    <p>AI와 브레인스토밍하여, 우리 주변의 서비스(온라인 게임, SNS, 금융 앱 등) 중 2가지를 선정하고, 각 시스템에서 ACID 프로토콜이 어떻게 생명줄 역할을 하는지 심층 분석하라.</p>
+                    <div class="analysis-target">
+                        <strong>[ANALYSIS TARGET 1: (예: 온라인 게임 아이템 강화 시스템)]</strong>
+                        <p><strong>상황 분석 :</strong> (여기에 분석 대상 시스템과 특정 상황을 구체적으로 서술)</p>
+                        <p><strong>ACID 프로토콜 적용 분석:</strong></p>
+                        <ul>
+                            <li>Atomicity (원자성):</li>
+                            <li>Consistency (일관성):</li>
+                            <li>Isolation (격리성):</li>
+                            <li>Durability (지속성):</li>
+                        </ul>
+                    </div>
+                    <div class="analysis-target" style="margin-top: 1rem;">
+                        <strong>[ANALYSIS TARGET 2: (선정 시스템 : )]</strong>
+                        <p><strong>상황 분석 :</strong> (여기에 분석 대상 시스템과 특정 상황을 구체적으로 서술)</p>
+                        <p><strong>ACID 프로토콜 적용 분석:</strong></p>
+                        <ul>
+                            <li>Atomicity (원자성):</li>
+                            <li>Consistency (일관성):</li>
+                            <li>Isolation (격리성):</li>
+                            <li>Durability (지속성):</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="worksheet-section">
+                     <h3>MISSION 2: ANALYZE FAILURE & CONCURRENCY (40점)</h3>
+                     <h4>[2-1] 시스템 장애 시나리오 분석 (20점)</h4>
+                     <p><strong>[SCENARIO]</strong> 한정판 신발 구매 트랜잭션 진행 중, 사용자의 잔액 30만원이 5만원으로 차감된 직후(메모리에만 반영), 시스템이 다운되었다. 재고 차감 및 구매 내역 기록은 처리되지 못했다.</p>
+                     <p><strong>보고 내용:</strong> 시스템 재부팅 후, 사용자의 잔액은 얼마여야 하는가? DBMS가 '로그(Log)' 와 'UNDO' 연산을 통해 데이터의 원자성(Atomicity) 을 어떻게 보장하는지 그 과정을 단계별로 설명하라.</p>
+                     <p style="color:var(--secondary-text)">(여기에 답변을 서술)</p>
+
+                     <h4 style="margin-top: 2rem;">[2-2] 동시성 제어 시나리오 분석 (20점)</h4>
+                     <p><strong>[SCENARIO]</strong> 수강 신청 마지막 날, 남은 자리가 1개인 과목에 여러 학생이 동시에 수강 신청을 시도하고 있다.</p>
+                     <p><strong>질문:</strong> '중복 수강 신청(갱신 분실)' 문제의 근본 원인은 무엇인가? 이 문제를 해결하기 위해, 학생이 과목 정보를 '조회'할 때와 최종 '신청'할 때, DBMS의 잠금(Locking) 메커니즘이 어떻게 동작해야 하는지 'Shared Lock' 과 'Exclusive Lock' 의 역할을 구분하여 설명하라.</p>
+                     <p style="color:var(--secondary-text)">(여기에 답변을 서술)</p>
+                </div>
+
+                <div class="worksheet-section">
+                    <h3>🎖️ MISSION DEBRIEFING: AI COLLABORATION REPORT (10점)</h3>
+                    <p>이번 미션을 수행하며 파트너 AI 'Gemini'를 어떻게 활용했는가? 가장 결정적인 정보를 얻었던 최고의 프롬프트(질문)는 무엇이었으며, 반대로 AI의 답변을 맹신하지 않고 비판적으로 검토하여 수정/보완했던 경험이 있다면 구체적으로 서술하라.</p>
+                    <p style="color:var(--secondary-text)">(여기에 AI 활용 경험과 성찰을 자유롭게 서술)</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const copyButtons = document.querySelectorAll('.copy-btn');
+
+            copyButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const promptWrapper = button.parentElement;
+                    const promptExample = promptWrapper.querySelector('.prompt-example');
+                    const textToCopy = promptExample.innerText.trim();
+                    
+                    copyToClipboard(textToCopy, button);
+                });
+            });
+
+            const copyWorksheetBtn = document.getElementById('copyWorksheetBtn');
+            copyWorksheetBtn.addEventListener('click', () => {
+                const worksheetContentEl = document.getElementById('worksheetContent');
+                // We'll build a clean text version of the worksheet for the prompt
+                let worksheetText = "트랜잭션과 회복 시스템 탐구 수행평가 양식\n\n";
+                worksheetText += "학번: __________    이름: ____________\n\n";
+
+                const sections = worksheetContentEl.querySelectorAll('.worksheet-section');
+                sections.forEach(section => {
+                    const title = section.querySelector('h3');
+                    if(title) worksheetText += `\n${title.innerText}\n`;
+                    
+                    const listItems = section.querySelectorAll('li');
+                    listItems.forEach(li => {
+                        worksheetText += `- ${li.innerText}\n`;
+                    });
+
+                    const subTitles = section.querySelectorAll('h4');
+                    subTitles.forEach(subTitle => {
+                        worksheetText += `\n${subTitle.innerText}\n`;
+                        const p = subTitle.nextElementSibling;
+                        if(p && p.tagName === 'P') worksheetText += `${p.innerText}\n`;
+                    });
+                    
+                    // Specific handling for tables and other structures as needed
+                    // This is a simplified text conversion
+                });
+
+                 const masterPrompt = `# MISSION: 데이터베이스 트랜잭션 보고서 작성을 위한 AI 브레인스토밍
+
+너는 지금부터 나의 학습 파트너이자 데이터베이스 전문가 AI 'Gemini'야. 나는 '트랜잭션과 회복 시스템'에 대한 수행평가 보고서를 작성하고 있어.
+
+아래는 내가 지금까지 작성한 보고서 내용이야. 이걸 먼저 분석해 줘.
+그리고 보고서에서 비어 있거나 내용이 부족한 부분을 채울 수 있도록, 각 미션(MISSION) 별로 내가 너에게 질문할 수 있는 **가장 효과적인 질문(프롬프트) 예시들을 3~5개가량** 만들어 줘. 질문은 내가 개념을 깊이 있게 이해하고, 창의적인 답변을 작성하는 데 도움이 되어야 해.
+
+---
+[여기에 활동지 내용 전체 복사]
+---`;
+
+                copyToClipboard(masterPrompt, copyWorksheetBtn, "프롬프트 복사 완료!", "📋 활동지 전체로 프롬프트 생성");
+            });
+
+            function copyToClipboard(text, buttonElement, successMessage = 'Copied!', originalMessage = 'Copy') {
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    buttonElement.textContent = successMessage;
+                    buttonElement.classList.add('copied');
+                    setTimeout(() => {
+                        buttonElement.textContent = originalMessage;
+                        buttonElement.classList.remove('copied');
+                    }, 2000);
+                } catch (err) {
+                    console.error('Failed to copy text: ', err);
+                    buttonElement.textContent = 'Error';
+                } finally {
+                    document.body.removeChild(textArea);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+
