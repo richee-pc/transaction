@@ -486,40 +486,62 @@
             const copyWorksheetBtn = document.getElementById('copyWorksheetBtn');
             copyWorksheetBtn.addEventListener('click', () => {
                 const worksheetContentEl = document.getElementById('worksheetContent');
-                // We'll build a clean text version of the worksheet for the prompt
-                let worksheetText = "트랜잭션과 회복 시스템 탐구 수행평가 양식\n\n";
-                worksheetText += "학번: __________    이름: ____________\n\n";
-
-                const sections = worksheetContentEl.querySelectorAll('.worksheet-section');
-                sections.forEach(section => {
-                    const title = section.querySelector('h3');
-                    if(title) worksheetText += `\n${title.innerText}\n`;
+                
+                // Function to extract text from the worksheet element
+                function extractWorksheetText(element) {
+                    let text = "트랜잭션과 회복 시스템 탐구 수행평가 양식\n\n";
+                    text += "학번: __________    이름: ____________\n\n";
                     
-                    const listItems = section.querySelectorAll('li');
-                    listItems.forEach(li => {
-                        worksheetText += `- ${li.innerText}\n`;
+                    element.querySelectorAll('.worksheet-section').forEach(section => {
+                        const h3 = section.querySelector('h3');
+                        if(h3) text += `\n--- ${h3.innerText.trim()} ---\n\n`;
+
+                        section.querySelectorAll('ul > li').forEach(li => {
+                            text += `- ${li.innerText.trim()}\n`;
+                        });
+
+                        section.querySelectorAll('h4').forEach(h4 => {
+                            text += `\n**${h4.innerText.trim()}**\n`;
+                            let nextEl = h4.nextElementSibling;
+                            while(nextEl && !['H3', 'H4'].includes(nextEl.tagName)) {
+                                if (nextEl.tagName === 'P') {
+                                    text += `${nextEl.innerText.trim()}\n`;
+                                } else if (nextEl.classList.contains('worksheet-table')) {
+                                     nextEl.querySelectorAll('tr').forEach((tr, rowIndex) => {
+                                        let rowText = [];
+                                        tr.querySelectorAll('th, td').forEach(cell => {
+                                            rowText.push(cell.innerText.trim());
+                                        });
+                                        text += rowText.join(' | ') + '\n';
+                                        if (rowIndex === 0) { // Add separator after header
+                                            text += rowText.map(h => '-'.repeat(h.length)).join(' | ') + '\n';
+                                        }
+                                     });
+                                } else if (nextEl.classList.contains('analysis-target')) {
+                                     text += `\n> ${nextEl.querySelector('strong').innerText.trim()}\n`;
+                                     nextEl.querySelectorAll('p, li').forEach(p_li => {
+                                        text += `  - ${p_li.innerText.trim()}\n`
+                                     });
+                                }
+                                nextEl = nextEl.nextElementSibling;
+                            }
+                        });
                     });
+                    return text;
+                }
 
-                    const subTitles = section.querySelectorAll('h4');
-                    subTitles.forEach(subTitle => {
-                        worksheetText += `\n${subTitle.innerText}\n`;
-                        const p = subTitle.nextElementSibling;
-                        if(p && p.tagName === 'P') worksheetText += `${p.innerText}\n`;
-                    });
-                    
-                    // Specific handling for tables and other structures as needed
-                    // This is a simplified text conversion
-                });
+                const worksheetText = extractWorksheetText(worksheetContentEl);
 
-                 const masterPrompt = `# MISSION: 데이터베이스 트랜잭션 보고서 작성을 위한 AI 브레인스토밍
+                 const masterPrompt = `# MISSION: 데이터베이스 트랜잭션 보고서 초안 작성
 
-너는 지금부터 나의 학습 파트너이자 데이터베이스 전문가 AI 'Gemini'야. 나는 '트랜잭션과 회복 시스템'에 대한 수행평가 보고서를 작성하고 있어.
+너는 지금부터 나의 학습 파트너이자 15년 차 시니어 데이터베이스 전문가 AI 'Gemini'야.
+나는 '트랜잭션과 회복 시스템'에 대한 수행평가 보고서를 작성하고 있어.
 
-아래는 내가 지금까지 작성한 보고서 내용이야. 이걸 먼저 분석해 줘.
-그리고 보고서에서 비어 있거나 내용이 부족한 부분을 채울 수 있도록, 각 미션(MISSION) 별로 내가 너에게 질문할 수 있는 **가장 효과적인 질문(프롬프트) 예시들을 3~5개가량** 만들어 줘. 질문은 내가 개념을 깊이 있게 이해하고, 창의적인 답변을 작성하는 데 도움이 되어야 해.
+아래에 내가 작성해야 할 보고서 양식 전체를 제공할게.
+이 양식의 각 항목에 대해, **고등학생의 눈높이에 맞춰 창의적이면서도 깊이 있는 내용으로 답변 예시를 작성**해 줘. 네가 작성해 준 내용을 바탕으로 나만의 보고서를 완성할 거야.
 
 ---
-[여기에 활동지 내용 전체 복사]
+${worksheetText}
 ---`;
 
                 copyToClipboard(masterPrompt, copyWorksheetBtn, "프롬프트 복사 완료!", "📋 활동지 전체로 프롬프트 생성");
